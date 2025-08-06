@@ -35,4 +35,22 @@ export const signInAnonymous = async () => {
   }
 };
 
+// Force sign out and create new anonymous user
+export const createNewAnonymousUser = async () => {
+  try {
+    // Sign out current user if exists
+    if (auth.currentUser) {
+      await auth.signOut();
+    }
+    
+    // Create new anonymous user
+    const result = await signInAnonymously(auth);
+    console.log('Created new anonymous user:', result.user.uid);
+    return result.user;
+  } catch (error) {
+    console.error('Error creating new anonymous user:', error);
+    throw error;
+  }
+};
+
 export default app;

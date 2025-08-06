@@ -24,34 +24,52 @@ const GamePage = () => {
   const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
-    // Get current user ID
-    const user = auth.currentUser;
-    if (user) {
-      setCurrentUserId(user.uid);
-    }
-
-    // Subscribe to game updates
-    const unsubscribe = subscribeToGame(gameId, (gameData) => {
-      if (gameData) {
-        setGame(gameData);
+    const initializeUser = async () => {
+      try {
+        // Create a new anonymous user for each game session
+        // This ensures each browser tab/window has a unique user ID
+        const { createNewAnonymousUser } = await import('../firebase');
+        const user = await createNewAnonymousUser();
         
-        // Check if current user has already joined
-        if (user && gameData.players && gameData.players[user.uid]) {
-          setHasJoined(true);
-          const playerData = gameData.players[user.uid];
-          setNickname(playerData.nickname);
-          setBuyIn(playerData.buyIn.toString());
-          setCashOut(playerData.cashOut ? playerData.cashOut.toString() : '');
+        if (user) {
+          setCurrentUserId(user.uid);
+          console.log('Current user ID:', user.uid);
         }
-        
-        setLoading(false);
-      } else {
-        setError('Game not found');
+
+        // Subscribe to game updates
+        const unsubscribe = subscribeToGame(gameId, (gameData) => {
+          if (gameData) {
+            setGame(gameData);
+            
+            // Check if current user has already joined
+            if (user && gameData.players && gameData.players[user.uid]) {
+              setHasJoined(true);
+              const playerData = gameData.players[user.uid];
+              setNickname(playerData.nickname);
+              setBuyIn(playerData.buyIn.toString());
+              setCashOut(playerData.cashOut ? playerData.cashOut.toString() : '');
+              console.log('User already joined:', playerData.nickname);
+            } else {
+              setHasJoined(false);
+              console.log('User not joined yet');
+            }
+            
+            setLoading(false);
+          } else {
+            setError('Game not found');
+            setLoading(false);
+          }
+        });
+
+        return () => unsubscribe();
+      } catch (error) {
+        console.error('Error initializing user:', error);
+        setError('Failed to initialize user');
         setLoading(false);
       }
-    });
+    };
 
-    return () => unsubscribe();
+    initializeUser();
   }, [gameId]);
 
   const handleJoinGame = async (e) => {
