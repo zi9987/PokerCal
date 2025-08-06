@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read and write games
+    match /games/{gameId} {
+      // Allow read access to anyone who knows the game ID
+      allow read: if request.auth != null;
+      
+      // Allow creating new games
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['name', 'createdAt', 'players'])
+        && request.resource.data.name is string
+        && request.resource.data.players is map;
+      
+      // Allow updating games (for adding/updating players)
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['players'])
+        && isValidPlayerUpdate(request.auth.uid, request.resource.data.players, resource.data.players);
+    }
+  }
+  
+  // Helper function to validate player updates
+  function isValidPlayerUpdate(userId, newPlayers, oldPlayers) {
+    // Get the player data being updated
+    let newPlayerData = newPlayers[userId];
+    let oldPlayerData = oldPlayers.get(userId, {});
+    
+    // Allow if user is updating their own data
+    return newPlayerData != null
+      && newPlayerData.keys().hasAll(['nickname', 'buyIn', 'rebuys', 'cashOut'])
+      && newPlayerData.nickname is string
+      && newPlayerData.buyIn is number
+      && newPlayerData.buyIn >= 0
+      && newPlayerData.rebuys is list
+      && newPlayerData.cashOut is number
+      && newPlayerData.cashOut >= 0
+      // Only allow updating the current user's data
+      && (oldPlayers.keys().toSet().difference(newPlayers.keys().toSet()).size() == 0)
+      && (newPlayers.keys().toSet().difference(oldPlayers.keys().toSet()).hasOnly([userId]));
+  }
+}
