@@ -41,6 +41,10 @@ const GamePage = () => {
           if (gameData) {
             setGame(gameData);
             
+            // Debug: Log all players
+            const playerCount = gameData.players ? Object.keys(gameData.players).length : 0;
+            console.log(`遊戲更新 - 玩家數量: ${playerCount}`, gameData.players);
+            
             // Check if current user has already joined
             if (user && gameData.players && gameData.players[user.uid]) {
               setHasJoined(true);

@@ -24,9 +24,15 @@ service cloud.firestore {
   function isValidPlayerUpdate(userId, newPlayers, oldPlayers) {
     // Get the player data being updated
     let newPlayerData = newPlayers[userId];
-    let oldPlayerData = oldPlayers.get(userId, {});
     
-    // Allow if user is updating their own data
+    // Check if user is only updating their own data
+    let addedPlayers = newPlayers.keys().toSet().difference(oldPlayers.keys().toSet());
+    let removedPlayers = oldPlayers.keys().toSet().difference(newPlayers.keys().toSet());
+    
+    // Allow if:
+    // 1. User is updating their own data
+    // 2. No players are being removed
+    // 3. Only the current user is being added (if any)
     return newPlayerData != null
       && newPlayerData.keys().hasAll(['nickname', 'buyIn', 'rebuys', 'cashOut'])
       && newPlayerData.nickname is string
@@ -35,8 +41,9 @@ service cloud.firestore {
       && newPlayerData.rebuys is list
       && newPlayerData.cashOut is number
       && newPlayerData.cashOut >= 0
-      // Only allow updating the current user's data
-      && (oldPlayers.keys().toSet().difference(newPlayers.keys().toSet()).size() == 0)
-      && (newPlayers.keys().toSet().difference(oldPlayers.keys().toSet()).hasOnly([userId]));
+      // No players should be removed
+      && removedPlayers.size() == 0
+      // Only allow adding the current user (for new players) or no new players (for updates)
+      && (addedPlayers.size() == 0 || (addedPlayers.size() == 1 && addedPlayers.hasOnly([userId])));
   }
 }
